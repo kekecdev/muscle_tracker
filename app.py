@@ -5,7 +5,7 @@ import re
 def load_data():
     CSV_URL = "https://docs.google.com/spreadsheets/d/1ZKqXthJSZf-So75Tb04Md3b2TbaGLcweZ5k-M_5sd38/export?format=csv&gid=1857163881"
     df = pd.read_csv(CSV_URL, skip_blank_lines=True)
-    # print(df.columns)
+    print(df.columns)
     df = df.dropna(how='all', axis=0)
     # # df['date'] = pd.to_datetime(df['date'], errors='coerce')
     # df = df.dropna(subset=['date'])
@@ -28,7 +28,7 @@ df = df.rename(columns={
     'レッグプレス(kg × 回数)': 'leg_press',
     '45°レッグプレス(kg × 回数)': 'leg_press_45',
     'メールアドレス': 'email',
-    'スコア': 'score',
+    # 'スコア': 'score',
 })
 df = df.drop(columns=['timestamp'], axis=1)
 df['date'] = pd.to_datetime(df['date'], format='%Y/%m/%d', errors='coerce')
@@ -109,7 +109,7 @@ st.sidebar.title("フィルタ")
 
 # 記入者・メールアドレスフィルタ
 authors = sorted(df['name'].dropna().unique())
-selected_authors = st.sidebar.multiselect("記入者を選択", authors, default=authors)
+selected_authors = st.sidebar.multiselect("記入者を選択", authors)
 # 英語 → 日本語の変換辞書
 exercise_labels = {
     'bench_press': 'ベンチプレス',
@@ -164,12 +164,10 @@ with st.expander("データプレビュー"):
         'name', 'date',
         f'{exercise}_kg', f'{exercise}_count',
         f'{exercise}_1rm' if exercise != 'chinup' else f'{exercise}_count',
-        'score'
     ]].rename(columns={
         f'{exercise}_kg': '重量',
         f'{exercise}_count': '回数',
         f'{exercise}_1rm': '推定1RM',
-        'score': 'スコア',
         'name': '記入者',
         'date': '記録日'
     }) if exercise != 'chinup' else dff[[
@@ -177,7 +175,6 @@ with st.expander("データプレビュー"):
         f'{exercise}_count', 'score'
     ]].rename(columns={
         f'{exercise}_count': 'reps',
-        'score': 'スコア',
         'name': '記入者',
         'date': '記録日'       
     })
