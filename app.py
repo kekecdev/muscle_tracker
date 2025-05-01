@@ -3,10 +3,7 @@ import pandas as pd
 import plotly.express as px
 import re
 def load_data():
-    SHEET_ID = "11p18L5C4kDjqsdIy-7XkCIdz36S6AypjZG4MHGMU0iQ"
-    GID = "1623432161"  # 最初のシートなら通常 "0"。他のシートならURL内の `gid=123456` などを確認。
-    CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
-
+    CSV_URL = "https://docs.google.com/spreadsheets/d/1ZKqXthJSZf-So75Tb04Md3b2TbaGLcweZ5k-M_5sd38/export?format=csv&gid=1857163881"
     df = pd.read_csv(CSV_URL, skip_blank_lines=True)
     # print(df.columns)
     df = df.dropna(how='all', axis=0)
