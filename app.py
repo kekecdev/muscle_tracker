@@ -106,7 +106,6 @@ exercises = [
 print(df['date'].min())
 # ——— ③ サイドバー：フィルタ設定 ———
 st.sidebar.title("フィルタ")
-
 # 記入者・メールアドレスフィルタ
 authors = sorted(df['name'].dropna().unique())
 selected_authors = st.sidebar.multiselect("記入者を選択", authors)
@@ -148,7 +147,9 @@ mask = (
 dff = df.loc[mask].copy()
 
 
+st.sidebar.title("記録を記入する")
 
+st.sidebar.markdown("[記録用グーグルフォーム](https://docs.google.com/forms/d/e/1FAIpQLSfWDTsokCezAqiM-VNxHv1rOpTiJJd7rCYUOqoTchg_3h4zdA/viewform?usp=header)")
 # # ——— ⑦ メイン画面 ———
 st.title("UEC 筋トレサークル トラッカー")
 
@@ -157,6 +158,7 @@ st.markdown(f"""
 - **種目**：{selected_japanese}
 - **期間**：{start_date}～{end_date}  
 - **データ件数**：{len(dff)} 件
+
 """)
 
 with st.expander("データプレビュー"):
