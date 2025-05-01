@@ -2,9 +2,20 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import re
-FILE_ID = "1jh_gPRUi2fGJC6NRXyEP2Czhzy4r3-p2"
-CSV_URL = f"https://drive.google.com/uc?export=download&id={FILE_ID}"
-df = pd.read_csv(CSV_URL, skip_blank_lines=True)
+def load_data():
+    SHEET_ID = "11p18L5C4kDjqsdIy-7XkCIdz36S6AypjZG4MHGMU0iQ"
+    GID = "1623432161"  # 最初のシートなら通常 "0"。他のシートならURL内の `gid=123456` などを確認。
+    CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
+
+    df = pd.read_csv(CSV_URL, skip_blank_lines=True)
+    # print(df.columns)
+    df = df.dropna(how='all', axis=0)
+    # # df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    # df = df.dropna(subset=['date'])
+    return df
+
+# アプリ実行のたびに読み直される
+df = load_data()
 df = df.dropna(how='all', axis=0)
 df = df.fillna(0,axis=0)
 df = df.rename(columns={
@@ -97,15 +108,31 @@ exercises = [
 
 print(df['date'].min())
 # ——— ③ サイドバー：フィルタ設定 ———
-st.sidebar.title("フィルタ設定")
+st.sidebar.title("フィルタ")
 
 # 記入者・メールアドレスフィルタ
 authors = sorted(df['name'].dropna().unique())
 selected_authors = st.sidebar.multiselect("記入者を選択", authors, default=authors)
+# 英語 → 日本語の変換辞書
+exercise_labels = {
+    'bench_press': 'ベンチプレス',
+    'deadlift': 'デッドリフト',
+    'squat': 'スクワット',
+    'latpulldown': 'ラットプルダウン',
+    'chinup': '懸垂',
+    'leg_press': 'レッグプレス',
+    'leg_press_45': '45°レッグプレス',
+    'shoulder_press': 'マシンショルダープレス'
+}
 
-# 種目選択
-exercise = st.sidebar.selectbox("種目を選択", exercises)
+# 日本語 → 英語の逆引き辞書を作成
+exercise_labels_reverse = {v: k for k, v in exercise_labels.items()}
 
+# サイドバーに日本語で選択肢を表示
+selected_japanese = st.sidebar.selectbox("種目を選択", list(exercise_labels.values()))
+
+# 内部処理では英語キーを使用
+exercise = exercise_labels_reverse[selected_japanese]
 
 start_date, end_date = st.sidebar.date_input(
     "表示期間",
@@ -130,26 +157,32 @@ st.title("UEC 筋トレサークル トラッカー")
 
 st.markdown(f"""
 - **記入者**：{', '.join(selected_authors)}  
-- **種目**：{exercise}  
+- **種目**：{selected_japanese}
 - **期間**：{start_date}～{end_date}  
 - **データ件数**：{len(dff)} 件
 """)
 
 with st.expander("データプレビュー"):
     dff_display = dff[[
-        'name', 'email', 'date',
+        'name', 'date',
         f'{exercise}_kg', f'{exercise}_count',
         f'{exercise}_1rm' if exercise != 'chinup' else f'{exercise}_count',
         'score'
     ]].rename(columns={
-        f'{exercise}_kg': 'weight',
-        f'{exercise}_count': 'reps',
-        f'{exercise}_1rm': 'est_1rm'
+        f'{exercise}_kg': '重量',
+        f'{exercise}_count': '回数',
+        f'{exercise}_1rm': '推定1RM',
+        'score': 'スコア',
+        'name': '記入者',
+        'date': '記録日'
     }) if exercise != 'chinup' else dff[[
-        'name', 'email', 'date',
+        'name',  'date',
         f'{exercise}_count', 'score'
     ]].rename(columns={
-        f'{exercise}_count': 'reps'
+        f'{exercise}_count': 'reps',
+        'score': 'スコア',
+        'name': '記入者',
+        'date': '記録日'       
     })
     st.dataframe(dff_display)
 
