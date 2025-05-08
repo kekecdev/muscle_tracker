@@ -32,6 +32,7 @@ df = df.rename(columns={
 })
 df = df.drop(columns=['timestamp'], axis=1)
 df['date'] = pd.to_datetime(df['date'], format='%Y/%m/%d', errors='coerce')
+df = df[df['date'] >= pd.to_datetime("2025-04-01")]
 def parse_kg_count(value):
     """'50-2' → (50, 2)、'0' や '5' → (0, 5)"""
     if isinstance(value, str) and '-' in value:
@@ -146,7 +147,6 @@ mask = (
 )
 dff = df.loc[mask].copy()
 
-
 st.sidebar.title("記録を記入する")
 
 st.sidebar.markdown("[記録用グーグルフォーム](https://docs.google.com/forms/d/e/1FAIpQLSfWDTsokCezAqiM-VNxHv1rOpTiJJd7rCYUOqoTchg_3h4zdA/viewform?usp=header)")
@@ -189,7 +189,11 @@ if exercise != "chinup":
         dff, x='date', y=f'{exercise}_kg', markers=True,
         labels={'date': '日付', f'{exercise}_kg': '重量(kg)'}
     )
-    fig_w.update_xaxes(rangeslider_visible=True)
+    fig_w.update_xaxes(
+        rangeslider_visible=False,
+        type='date',
+        tickformat='%Y-%m-%d',
+        dtick="D1")
     st.plotly_chart(fig_w, use_container_width=True)
 
     
@@ -198,7 +202,12 @@ if exercise != "chinup":
         dff, x='date', y=f'{exercise}_1rm', markers=True,
         labels={'date': '日付', f'{exercise}_1rm': '推定1RM(kg)'}
     )
-    fig_1rm.update_xaxes(rangeslider_visible=True)
+    fig_1rm.update_xaxes(
+        rangeslider_visible=False,
+        type='date',
+        tickformat='%Y-%m-%d',
+        dtick="D1"
+                         )
     st.plotly_chart(fig_1rm, use_container_width=True)
 else:
     st.subheader("回数推移")
@@ -206,5 +215,10 @@ else:
         dff, x='date', y=f'{exercise}_count', markers=True,
         labels={'date': '日付', f'{exercise}_count': '回数'}
     )
-    fig_r.update_xaxes(rangeslider_visible=True)
+    fig_r.update_xaxes(
+        rangeslider_visible=False,
+        type='date',
+        tickformat='%Y-%m-%d',
+        dtick="D1"
+        )
     st.plotly_chart(fig_r, use_container_width=True)
