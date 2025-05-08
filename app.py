@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import re
+import streamlit.components.v1 as components
+
 def load_data():
     CSV_URL = "https://docs.google.com/spreadsheets/d/1ZKqXthJSZf-So75Tb04Md3b2TbaGLcweZ5k-M_5sd38/export?format=csv&gid=1857163881"
     df = pd.read_csv(CSV_URL, skip_blank_lines=True)
@@ -208,3 +209,12 @@ else:
     )
     fig_r.update_xaxes(rangeslider_visible=True)
     st.plotly_chart(fig_r, use_container_width=True)
+
+#フォームをWebページに埋め込む
+form_url = "https://docs.google.com/forms/d/e/1FAIpQLSfWDTsokCezAqiM-VNxHv1rOpTiJJd7rCYUOqoTchg_3h4zdA/viewform?embedded=true"
+st.subheader("記録を記入する")
+components.iframe(
+    src=form_url, 
+    height=1000,
+    scrolling=True,
+    )
