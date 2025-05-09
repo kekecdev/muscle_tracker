@@ -33,6 +33,7 @@ df = df.rename(columns={
 })
 df = df.drop(columns=['timestamp'], axis=1)
 df['date'] = pd.to_datetime(df['date'], format='%Y/%m/%d', errors='coerce')
+df = df[df['date'] >= pd.to_datetime("2025-04-01")]
 def parse_kg_count(value):
     """'50-2' → (50, 2)、'0' や '5' → (0, 5)"""
     if isinstance(value, str) and '-' in value:
