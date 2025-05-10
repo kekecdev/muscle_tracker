@@ -1,9 +1,9 @@
 import streamlit as st
 
 def render():
-    st.title("💪 ベンチプレス目標メニュー自動生成")
+    st.title("(TEST)ベンチプレス目標メニュー自動生成")
 
-    st.markdown("### 身長と体重に応じて、目標ベンチプレス重量をリアルタイムで表示します。")
+    st.markdown("### 身長と体重に応じて、目標ベンチプレス重量を表示します。")
 
     # 入力：身長・体重
     height = st.number_input("身長（cm）", min_value=100, max_value=250, value=170)
