@@ -43,7 +43,7 @@ def estimate_1rm(weight, reps):
     return weight * (1 + reps / 30)
 
 def render():
-    st.title("筋トレ記録トラッカーこんにちは")
+    st.title("筋トレ記録トラッカー")
 
     df = load_data()
 
