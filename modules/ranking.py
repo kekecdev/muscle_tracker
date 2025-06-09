@@ -2,6 +2,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np  # numpyをインポート
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -130,41 +131,52 @@ def run(df_original):
                 # 4. 成長量でランキングを作成
                 growth_ranking = pd.DataFrame(growth_data)
                 growth_ranking['成長率(%)'] = (growth_ranking['成長(kg)'] / growth_ranking['月初1RM (kg)']) * 100
-                growth_ranking = growth_ranking.sort_values(by="成長(kg)", ascending=False).reset_index(drop=True)
+                
+                # ★★★ +inf% (無限大) や -inf% になった行を削除する処理を追加 ★★★
+                growth_ranking.replace([np.inf, -np.inf], np.nan, inplace=True)
+                growth_ranking.dropna(subset=['成長率(%)'], inplace=True)
+                
+                
+                growth_ranking = growth_ranking.sort_values(by="成長率(%)", ascending=False).reset_index(drop=True)
                 growth_ranking.index = growth_ranking.index + 1
 
-              # --- ↓↓↓ トップ10をスタイリッシュに表示する処理を追加 ↓↓↓ ---
-                st.markdown(f"#### {selected_month_str}月 {selected_exercise_growth} 成長トップ10")
-                for index, row in growth_ranking.head(10).iterrows():
-                    cols = st.columns([1, 3, 3])
-                    rank_str = f"**{index}位**"
-                    if index == 1: rank_str = f"🥇 {rank_str}"
-                    elif index == 2: rank_str = f"🥈 {rank_str}"
-                    elif index == 3: rank_str = f"🥉 {rank_str}"
-                    
-                    growth_detail = (
-                        f"**+{row['成長(kg)']:.1f} kg** "
-                        f"<small>({row['月初1RM (kg)']:.1f} → {row['月末1RM (kg)']:.1f} kg)</small>"
-                    )
-                    
-                    cols[0].markdown(rank_str, unsafe_allow_html=True)
-                    cols[1].markdown(f"**{row['名前']}**", unsafe_allow_html=True)
-                    cols[2].markdown(growth_detail, unsafe_allow_html=True)
+                if growth_ranking.empty:
+                    st.info(f"{selected_month_str}月は、ランキング対象となるメンバーの記録がありません。")
+                else:
 
-                # --- ↑↑↑ ここまで追加 ↑↑↑ ---              
-                with st.expander("全成長記録を表示"):                
-                    st.dataframe(
-                        growth_ranking,
-                        column_config={
-                            "月初1RM (kg)": st.column_config.NumberColumn(format="%.1f"),
-                            "月末1RM (kg)": st.column_config.NumberColumn(format="%.1f"),
-                            "成長(kg)": st.column_config.ProgressColumn(
-                                "成長(kg)",
-                                format="+%.1f kg",
-                                min_value=0,
-                                max_value=growth_ranking['成長(kg)'].max(),
-                            ),
-                            "成長率(%)": st.column_config.NumberColumn(format="+%.1f%%"),
-                        },
-                        use_container_width=True
-                    )
+
+                # --- ↓↓↓ トップ10をスタイリッシュに表示する処理を追加 ↓↓↓ ---
+                    st.markdown(f"#### {selected_month_str}月 {selected_exercise_growth} 成長トップ10")
+                    for index, row in growth_ranking.head(10).iterrows():
+                        cols = st.columns([1, 3, 3])
+                        rank_str = f"**{index}位**"
+                        if index == 1: rank_str = f"🥇 {rank_str}"
+                        elif index == 2: rank_str = f"🥈 {rank_str}"
+                        elif index == 3: rank_str = f"🥉 {rank_str}"
+                        
+                        growth_detail = (
+                            f"**+{row['成長率(%)']:.1f} %** "
+                            f"<small>({row['月初1RM (kg)']:.1f} → {row['月末1RM (kg)']:.1f} kg)</small>"
+                        )
+                        
+                        cols[0].markdown(rank_str, unsafe_allow_html=True)
+                        cols[1].markdown(f"**{row['名前']}**", unsafe_allow_html=True)
+                        cols[2].markdown(growth_detail, unsafe_allow_html=True)
+
+                    # --- ↑↑↑ ここまで追加 ↑↑↑ ---              
+                    with st.expander("全成長記録を表示"):                
+                        st.dataframe(
+                            growth_ranking,
+                            column_config={
+                                "月初1RM (kg)": st.column_config.NumberColumn(format="%.1f"),
+                                "月末1RM (kg)": st.column_config.NumberColumn(format="%.1f"),
+                                "成長(kg)": st.column_config.ProgressColumn(
+                                    "成長(kg)",
+                                    format="+%.1f kg",
+                                    min_value=0,
+                                    max_value=growth_ranking['成長(kg)'].max(),
+                                ),
+                                "成長率(%)": st.column_config.NumberColumn(format="+%.1f%%"),
+                            },
+                            use_container_width=True
+                        )
