@@ -10,7 +10,7 @@ from astral.sun import sun
 from astral import LocationInfo
 import pytz 
 
-from modules import form, tracker, menu_gen
+from modules import form, tracker, ranking
 
 
 # --- 定数定義 ---
@@ -188,7 +188,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # タブの表示
-tab1, tab2, tab3 = st.tabs(["記録入力", "トラッカー", "メニュー生成"])
+tab1, tab2, tab3 = st.tabs(["記録入力", "トラッカー", "ランキング"])
 
 with tab1:
     # formモジュールに、データフレームとファイルパスを渡す
@@ -198,4 +198,4 @@ with tab2:
     tracker.run(st.session_state.df)
 with tab3:
     # menu_genモジュールを呼び出す
-    menu_gen.render()
+    ranking.run(st.session_state.df)
