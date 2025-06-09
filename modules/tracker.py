@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import datetime
 
+'''
 @st.cache_data
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1ZKqXthJSZf-So75Tb04Md3b2TbaGLcweZ5k-M_5sd38/export?format=csv&gid=1857163881"
@@ -27,6 +28,8 @@ def load_data():
     df = df.fillna(0)
     return df
 
+'''
+
 def parse_kg_count(value):
     if isinstance(value, str) and '-' in value:
         try:
@@ -40,26 +43,76 @@ def parse_kg_count(value):
         return 0, 0
 
 def estimate_1rm(weight, reps):
+    if reps == 0:
+        return 0
     return weight * (1 + reps / 30)
 
-def render():
+# 関数名を 'run' にし、引数(df)を受け取るように変更
+def run(df_original):
     st.title("筋トレ記録トラッカー")
 
-    df = load_data()
+    if df_original is None or df_original.empty:
+        st.warning("表示できる記録がありません。「記録入力」タブからデータを追加してください。")
+        return
 
-    # 重量・回数に分解
-    for col in ['bench_press', 'deadlift', 'squat', 'latpulldown', 'chinup', 'shoulder_press', 'leg_press', 'leg_press_45']:
-        df[[f"{col}_kg", f"{col}_count"]] = df[col].apply(lambda x: pd.Series(parse_kg_count(x)))
-        if col != 'chinup':
-            df[f"{col}_1rm"] = df.apply(lambda row: estimate_1rm(row[f"{col}_kg"], row[f"{col}_count"]), axis=1)
+    # 元のデータフレームをコピーして加工することで、他のタブに影響を与えない
+    df = df_original.copy()
+    
+    # --- tracker.py内で行っていたデータ前処理 ---
+      # 1. カラム名を英語に統一
+    df = df.rename(columns={
+        'タイムスタンプ': 'timestamp',
+        '記入者名': 'name',
+        '記録日': 'date',
+        'ベンチプレス(kg × 回数)': 'bench_press',
+        'デッドリフト(kg × 回数)': 'deadlift',
+        'スクワット(kg × 回数)': 'squat',
+        'ラットプルダウン(kg × 回数)': 'latpulldown',
+        '懸垂(回数)': 'chinup',
+        'マシンショルダープレス(kg × 回数)': 'shoulder_press',
+        'レッグプレス(kg × 回数)': 'leg_press',
+        '45°レッグプレス(kg × 回数)': 'leg_press_45',
+        'メールアドレス': 'email'
+    })
 
+    # 2. 'date'列をdatetime型に変換。変換できないものはNaT(Not a Time)になる
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+
+    # 3. 'date'が無効(NaT)な行を完全に削除する（これが重要！）
+    df.dropna(subset=['date'], inplace=True)
+    if df.empty:
+        st.warning("有効な日付の記録がありません。")
+        return
+
+    # 4. トレーニング種目の列だけを0で埋める
+    exercise_cols = [
+        'bench_press', 'deadlift', 'squat', 'latpulldown', 'chinup', 
+        'shoulder_press', 'leg_press', 'leg_press_45'
+    ]
+    for col in exercise_cols:
+        if col in df.columns:
+            df[col] = df[col].fillna(0) # 各種目列のNaNだけを0で埋める
+        else:
+            df[col] = 0 # 列自体が存在しない場合は0で作成
+     # 重量・回数に分解
+    exercise_cols = ['bench_press', 'deadlift', 'squat', 'latpulldown', 'chinup', 'shoulder_press', 'leg_press', 'leg_press_45']
+    for col in exercise_cols:
+        if col in df.columns:
+            # 文字列でないとapplyできない場合があるので、型を変換
+            df[col] = df[col].astype(str)
+            df[[f"{col}_kg", f"{col}_count"]] = df[col].apply(lambda x: pd.Series(parse_kg_count(x)))
+            if col != 'chinup':
+                df[f"{col}_1rm"] = df.apply(lambda row: estimate_1rm(row[f"{col}_kg"], row[f"{col}_count"]), axis=1)
     # フィルター UI（本体エリア）
     st.subheader("フィルタ")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        selected_authors = st.multiselect("記入者を選択", df['name'].dropna().unique().tolist())
-
+        # name列が存在し、空でない場合のみフィルタを表示
+        if 'name' in df and not df['name'].dropna().empty:
+            selected_authors = st.multiselect("記入者を選択", df['name'].dropna().unique().tolist())
+        else:
+            selected_authors = []
     with col2:
         exercise_labels = {
             'bench_press': 'ベンチプレス',

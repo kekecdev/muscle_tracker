@@ -10,7 +10,25 @@ from astral.sun import sun
 from astral import LocationInfo
 import pytz 
 
-from modules import show_form, show_tracker, show_menu_gen
+from modules import form, tracker, menu_gen
+
+
+# --- 定数定義 ---
+DATA_FILE = "data/training_log.csv"
+
+# --- データ読み込み関数 ---
+def load_data(filepath):
+    try:
+        # Googleスプレッドシートの形式に合わせて読み込み
+        df = pd.read_csv(filepath, header=0)
+        # タイムスタンプ列などをここで前処理しても良い
+        df['記録日'] = pd.to_datetime(df['記録日'], errors='coerce')
+        return df
+    except FileNotFoundError:
+        # ファイルがない場合は、空のDataFrameを作成
+        st.error(f"{filepath} が見つかりません。Step 1 を実行してください。")
+        return pd.DataFrame() # 空のDataFrameを返す
+
 
 # タイムゾーンを明示的に指定
 tokyo_tz = pytz.timezone("Asia/Tokyo")
@@ -51,6 +69,36 @@ def get_base64_image(image_path):
     return f"data:image/png;base64,{encoded}"
 image_data = get_base64_image("uecmuscle_icon.png")
 
+
+
+# --- st.session_stateの初期化 ---
+# アプリのセッション中にデータを保持するために使用
+if 'df' not in st.session_state:
+    st.session_state.df = load_data(DATA_FILE)
+
+
+# --- ↓↓↓ ここからデバッグコードを追加 ↓↓↓ ---
+#st.header("【デバッグ情報】")
+#st.write("読み込まれたDataFrameの全データ:")
+#st.dataframe(st.session_state.df)
+
+# '記入者名'列が存在するか確認してからunique()を呼び出す
+#if '記入者名' in st.session_state.df.columns:
+#    st.write("DataFrameから取得したユニークな記入者リスト:")
+#    st.write(st.session_state.df['記入者名'].unique())
+#else:
+#    st.write("DataFrameに「記入者名」という列が見つかりません。")
+#
+#st.markdown("---") # 見やすくするための区切り線
+# --- ↑↑↑ デバッグここまで ↑↑↑ ---
+
+
+
+# --- カスタムスタイルとヘッダー (変更なし) ---
+image_data = get_base64_image("uecmuscle_icon.png")
+#st.markdown(f"""...""", unsafe_allow_html=True)
+# ちょんちょんいらないよね？？
+
 # カスタムスタイルとヘッダー
 st.markdown(f"""
     <style>
@@ -61,6 +109,10 @@ st.markdown(f"""
 
         [data-testid="stMarkdownContainer"] {{
             color: {text_color};
+        }}
+
+        [data-testid="stForm"] {{
+        padding: 0px;
         }}
 
         .blue-header {{
@@ -139,10 +191,11 @@ st.markdown(f"""
 tab1, tab2, tab3 = st.tabs(["記録入力", "トラッカー", "メニュー生成"])
 
 with tab1:
-    show_form()
-    
+    # formモジュールに、データフレームとファイルパスを渡す
+    form.run(st.session_state.df, DATA_FILE)
 with tab2:
-    show_tracker()
-
+    # trackerモジュールに、データフレームを渡す
+    tracker.run(st.session_state.df)
 with tab3:
-    show_menu_gen()
+    # menu_genモジュールを呼び出す
+    menu_gen.render()
