@@ -52,12 +52,12 @@ def run(df, data_file_path):
         
         st.markdown("---")
         st.markdown("##### その他")
-        latpulldown = st.text_input("ラットプルダウン (kg-回数)")
+        latpulldown = st.text_input("ラットプルダウン (kg-回数)", placeholder="例: 67-10")
         chinup = st.text_input("懸垂 (回数)", placeholder="例: 15")
         
-        shoulder_press = ""
-        leg_press = ""
-        leg_press_45 = ""
+        shoulder_press = st.text_input("マシンショルダープレス (kg-回数)", placeholder="例: 80-10")
+        leg_press = st.text_input("レッグプレス (kg-回数)", placeholder="例: 80-10")
+        leg_press_45 = st.text_input("45°レッグプレス (kg-回数)", placeholder="例: 80-10")
 
         # 送信ボタンもフォームの中にあることを確認
         submit_button = st.form_submit_button(label='この内容で記録する', type='primary')
