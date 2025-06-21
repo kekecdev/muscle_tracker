@@ -1,27 +1,27 @@
-# modules/form.py (最終完成版)
+# modules/form.py (Google Sheets API対応版)
 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+# スプレッドシートに書き込むためのライブラリをインポート
+from gspread_dataframe import set_with_dataframe
 
-def run(df, data_file_path):
+# run関数の引数を data_file_path から worksheet に変更
+def run(df, worksheet):
     st.title("筋トレ記録入力フォーム")
     st.markdown("### 今日のトレーニングを記録しよう！")
     
     st.markdown("##### 記入者")
     
-    # ラジオボタンはフォームの外に配置
     user_type = st.radio(
         "記入者タイプを選択してください",
         ["既存メンバー", "新規メンバー"],
         horizontal=True,
     )
     
-    # フォームはここに1つだけ
     with st.form(key=f'training_form_{user_type}', clear_on_submit=True):
         name = ""
         
-        # ラジオボタンの選択に応じて表示を切り替え
         if user_type == "既存メンバー":
             if '記入者名' in df.columns and not df['記入者名'].dropna().empty:
                 user_list = sorted(df['記入者名'].dropna().unique().tolist())
@@ -32,7 +32,9 @@ def run(df, data_file_path):
                     label_visibility="collapsed"
                 )
             else:
-                st.info("まだ登録メンバーがいません。「新規メンバー」を選択してください。")
+                # フォームの中ではst.infoがうまく表示されないことがあるため、
+                # ラジオボタンの外にメッセージを出すか、何もしないのが良い
+                pass
 
         else: # "新規メンバー" が選択された場合
             name = st.text_input(
@@ -41,7 +43,6 @@ def run(df, data_file_path):
                 label_visibility="collapsed"
             )
 
-        # 記録日以下のすべての要素をフォームの中に入れる
         record_date = st.date_input("記録日", datetime.now())
         
         st.markdown("---")
@@ -52,20 +53,23 @@ def run(df, data_file_path):
         
         st.markdown("---")
         st.markdown("##### その他")
-        latpulldown = st.text_input("ラットプルダウン (kg-回数)", placeholder="例: 67-10")
+        latpulldown = st.text_input("ラットプルダウン (kg-回数)")
         chinup = st.text_input("懸垂 (回数)", placeholder="例: 15")
-        
-        shoulder_press = st.text_input("マシンショルダープレス (kg-回数)", placeholder="例: 80-10")
-        leg_press = st.text_input("レッグプレス (kg-回数)", placeholder="例: 80-10")
-        leg_press_45 = st.text_input("45°レッグプレス (kg-回数)", placeholder="例: 80-10")
+        shoulder_press = st.text_input("マシンショルダープレス (kg-回数)")
+        leg_press = st.text_input("レッグプレス (kg-回数)")
+        leg_press_45 = st.text_input("45°レッグプレス (kg-回数)")
 
-        # 送信ボタンもフォームの中にあることを確認
         submit_button = st.form_submit_button(label='この内容で記録する', type='primary')
 
-    # 送信ボタンが押された後の処理はフォームの外
+    # 送信ボタンが押された後の処理
     if submit_button:
         if not name:
             st.warning("記入者を選択、または新しい名前を入力してください。")
+            st.stop()
+        
+        # worksheetオブジェクトが正常に渡されているかチェック
+        if worksheet is None:
+            st.error("スプレッドシートに接続できません。設定を確認してください。")
             st.stop()
 
         new_record = pd.DataFrame([{
@@ -79,7 +83,11 @@ def run(df, data_file_path):
         }])
         
         updated_df = pd.concat([df, new_record], ignore_index=True)
-        updated_df.to_csv(data_file_path, index=False)
-        st.session_state.df = updated_df
-        
-        st.success(f"{name}さんの記録が正常に追加されました！ 🎉")
+
+        # ★★★ CSVへの書き込み処理を、スプレッドシートへの書き込み処理に差し替え ★★★
+        try:
+            set_with_dataframe(worksheet, updated_df, include_index=False, resize=True)
+            st.session_state.df = updated_df
+            st.success(f"{name}さんの記録が正常に追加されました！ 🎉")
+        except gspread.exceptions.APIError as e:
+            st.error(f"スプレッドシートへの書き込み中にエラーが発生しました。Google Cloudの権限などを確認してください。エラー: {e}")

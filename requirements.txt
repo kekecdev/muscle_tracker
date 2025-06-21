@@ -3,3 +3,5 @@ pandas
 plotly
 astral
 pytz
+gspread
+gspread-dataframe

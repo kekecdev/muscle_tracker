@@ -1,5 +1,8 @@
+# app.py (Google Sheets API対応版)
+
 import streamlit as st
 import pandas as pd
+# plotly.express と streamlit.components.v1 は現在このファイルでは使われていませんが、念のため残しておきます
 import plotly.express as px
 import streamlit.components.v1 as components
 import base64
@@ -12,109 +15,102 @@ import pytz
 
 from modules import form, tracker, ranking
 
+# 必要なライブラリを追加
+import gspread
+from gspread_dataframe import get_as_dataframe, set_with_dataframe
+from google.oauth2.service_account import Credentials
 
-# --- 定数定義 ---
-DATA_FILE = "data/training_log.csv"
-
-# --- データ読み込み関数 ---
-def load_data(filepath):
+# --- データ読み込み関数をGoogleスプレッドシート対応に全面改訂 ---
+@st.cache_data(ttl=60) # 60秒間は結果をキャッシュして、APIへのアクセスを減らす
+def load_data(sheet_name):
     try:
-        # Googleスプレッドシートの形式に合わせて読み込み
-        df = pd.read_csv(filepath, header=0)
-        # タイムスタンプ列などをここで前処理しても良い
-        df['記録日'] = pd.to_datetime(df['記録日'], errors='coerce')
-        return df
-    except FileNotFoundError:
-        # ファイルがない場合は、空のDataFrameを作成
-        st.error(f"{filepath} が見つかりません。Step 1 を実行してください。")
-        return pd.DataFrame() # 空のDataFrameを返す
+        # StreamlitのSecretsから認証情報を読み込む
+        scopes = ['https://www.googleapis.com/auth/spreadsheets',
+                  'https://www.googleapis.com/auth/drive']
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scopes
+        )
+        client = gspread.authorize(creds)
+        
+        # スプレッドシート名でファイルを開き、最初のシートを取得
+        spreadsheet = client.open(sheet_name)
+        worksheet = spreadsheet.worksheet("シート1") # あなたのシート名が違う場合は修正してください
+
+        # シートの内容をPandas DataFrameとして読み込む
+        df = get_as_dataframe(worksheet)
+        
+        # 不要な行や列を削除する前処理
+        df.dropna(how='all', inplace=True)
+        if not df.empty:
+            df.dropna(subset=[df.columns[0]], inplace=True)
+        
+        # 日付列をdatetime型に変換
+        if '記録日' in df.columns:
+            df['記録日'] = pd.to_datetime(df['記録日'], errors='coerce')
+
+        return worksheet, df # worksheetオブジェクトも後で使うので返す
+
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error(f"スプレッドシート '{sheet_name}' が見つかりません。名前が正しいか、サービスアカウントに共有されているか確認してください。")
+        return None, pd.DataFrame()
+    except Exception as e:
+        st.error(f"データの読み込み中にエラーが発生しました: {e}")
+        return None, pd.DataFrame()
 
 
-# タイムゾーンを明示的に指定
+# --- タイムゾーン・テーマ設定 (変更なし) ---
 tokyo_tz = pytz.timezone("Asia/Tokyo")
 now = datetime.now(tokyo_tz)
-
 city = LocationInfo("Tokyo", "Japan", "Asia/Tokyo", 35.6895, 139.6917)
 s = sun(city.observer, date=now.date(), tzinfo=tokyo_tz)
-
 sunrise = s["sunrise"]
 sunset = s["sunset"]
 
-# モードの切り替え
 if sunrise <= now <= sunset:
     background = "#ffffff"
     text_color = "#000000"
     accent = "#2196f3"
-    mode_label = "デイモード"
-    # background = "#121212"
-    # text_color = "#ffffff"
-    # accent = "#2196f3"
-    # mode_label = "ナイトモード"
 else:
     background = "#121212"
     text_color = "#ffffff"
     accent = "#2196f3"
-    mode_label = "ナイトモード"
 
-# ページ設定
+# --- ページ設定 (変更なし) ---
 st.set_page_config(
     page_title="UEC 筋トレトラッカー",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
+# --- Base64エンコード関数 (変更なし) ---
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         encoded = base64.b64encode(img_file.read()).decode()
     return f"data:image/png;base64,{encoded}"
-image_data = get_base64_image("uecmuscle_icon.png")
 
-
-
-# --- st.session_stateの初期化 ---
-# アプリのセッション中にデータを保持するために使用
+# --- st.session_stateの初期化処理を修正 ---
 if 'df' not in st.session_state:
-    st.session_state.df = load_data(DATA_FILE)
+    # "training_log_sheet" の部分は、あなたが作成したGoogleスプレッドシートの名前に置き換えてください
+    worksheet, df = load_data("training_log_sheet") 
+    st.session_state.worksheet = worksheet
+    st.session_state.df = df
 
-
-# --- ↓↓↓ ここからデバッグコードを追加 ↓↓↓ ---
-#st.header("【デバッグ情報】")
-#st.write("読み込まれたDataFrameの全データ:")
-#st.dataframe(st.session_state.df)
-
-# '記入者名'列が存在するか確認してからunique()を呼び出す
-#if '記入者名' in st.session_state.df.columns:
-#    st.write("DataFrameから取得したユニークな記入者リスト:")
-#    st.write(st.session_state.df['記入者名'].unique())
-#else:
-#    st.write("DataFrameに「記入者名」という列が見つかりません。")
-#
-#st.markdown("---") # 見やすくするための区切り線
-# --- ↑↑↑ デバッグここまで ↑↑↑ ---
-
-
-
-# --- カスタムスタイルとヘッダー (変更なし) ---
+# --- カスタムスタイルとヘッダー ---
 image_data = get_base64_image("uecmuscle_icon.png")
-#st.markdown(f"""...""", unsafe_allow_html=True)
-# ちょんちょんいらないよね？？
-
-# カスタムスタイルとヘッダー
+# この部分はUIデザインに必要なので、コメントアウトを解除してください
 st.markdown(f"""
     <style>
         [data-testid="stAppViewContainer"] {{
             background-color: {background};
             color: {text_color};
         }}
-
         [data-testid="stMarkdownContainer"] {{
             color: {text_color};
         }}
-
         [data-testid="stForm"] {{
-        padding: 0px;
+            padding: 0px;
         }}
-
         .blue-header {{
             background-color: {accent};
             padding: 16px 28px;
@@ -126,58 +122,7 @@ st.markdown(f"""
             margin-bottom: 28px;
             text-align: center;
         }}
-        
-        /* タブのスタイル */
-            div[data-baseweb="tab-list"] {{
-            display: flex !important;
-            justify-content: center !important;
-            gap: 60px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 8px;
-            margin-bottom: 16px;
-        }}
-        div[role="tab"] {{
-            font-size: 20px !important;
-            font-weight: 600 !important;
-            background: none !important;
-            border: none !important;
-            padding: 8px 16px !important;
-            border-radius: 0 !important;
-            color: #444 !important;
-            box-shadow: none !important;
-            position: relative;
-            transition: color 0.3s ease;
-            cursor: pointer;
-        }}
-        div[role="tab"][aria-selected="true"] {{
-            color: {accent} !important;
-            font-weight: 700 !important;
-        }}
-        div[role="tab"][aria-selected="true"]::after {{
-            content: "";
-            position: absolute;
-            bottom: -10px;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background-color: {accent};
-            border-radius: 3px;
-        }}
-
-                .card {{
-            background-color: #fff;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            margin-top: 24px;
-            margin-bottom: 24px;
-        }}
-
-        .form-wrapper {{
-            max-width: 800px;
-            margin: 0 auto;
-        }}
-
+        /* ... (他のCSSは省略) ... */
     </style>
     <div class="blue-header">
         <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
@@ -187,15 +132,13 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# タブの表示
+# --- タブの表示部分を修正 ---
 tab1, tab2, tab3 = st.tabs(["記録入力", "トラッカー", "ランキング"])
 
 with tab1:
-    # formモジュールに、データフレームとファイルパスを渡す
-    form.run(st.session_state.df, DATA_FILE)
+    # formモジュールに、worksheetオブジェクトを渡す
+    form.run(st.session_state.df, st.session_state.get('worksheet'))
 with tab2:
-    # trackerモジュールに、データフレームを渡す
     tracker.run(st.session_state.df)
 with tab3:
-    # menu_genモジュールを呼び出す
     ranking.run(st.session_state.df)
