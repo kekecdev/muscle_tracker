@@ -45,7 +45,7 @@ def parse_kg_count(value):
 def estimate_1rm(weight, reps):
     if reps == 0:
         return 0
-    return weight * (1 + reps / 30)
+    return weight * (1 + reps / 40)
 
 # 関数名を 'run' にし、引数(df)を受け取るように変更
 def run(df_original):
