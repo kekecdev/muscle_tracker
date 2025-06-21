@@ -38,7 +38,7 @@ def parse_kg_count(value):
     if isinstance(value, str) and '-' in value:
         try:
             kg, count = value.split('-')
-            return int(kg), int(count)
+            return float(kg), int(count)
         except:
             return 0, 0
     try:
