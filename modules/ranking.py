@@ -180,3 +180,21 @@ def run(df_original):
                             },
                             use_container_width=True
                         )
+    # --- ↓↓↓ この部分が追加されました ↓↓↓ ---
+    st.markdown("---")
+    st.subheader("📊 データ管理")
+    st.info("アプリのコードを更新（git push）する前など、定期的に全記録をダウンロードしてバックアップすることを推奨します。")
+
+    # オリジナルの全データ(df_original)をCSV形式に変換
+    # BOM付きUTF-8でエンコードすることで、Excelで開いた際の文字化けを防ぐ
+    csv_data = df_original.to_csv(index=False).encode('utf-8-sig')
+
+    st.download_button(
+        label="📈 全トレーニング記録をダウンロード (CSV)",
+        data=csv_data,
+        file_name=f"training_log_backup_{datetime.now().strftime('%Y%m%d')}.csv",
+        mime='text/csv',
+        help="サーバーに保存されている最新の全トレーニング記録をCSVファイルとしてダウンロードします。",
+        type='primary'  # ★★★ この行を追加 ★★★
+    )    
+                        
