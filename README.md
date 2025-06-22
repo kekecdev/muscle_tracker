@@ -1,5 +1,6 @@
 # muscle_tracker
-Editors: Keita Maihara, Ryosuke Matsuo
+Editors: Keita Maihara, Ryosuke Matsuo, Keita Murata
 
-.gitigonoreファイルにpushしたくないフォルダを入れる
-このファイルにしたくないフォルダ名を記入
+# top
+![alt text](image.png)
+
