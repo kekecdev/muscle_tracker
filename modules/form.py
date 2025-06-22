@@ -1,12 +1,11 @@
-# modules/form.py (Google Sheets API対応版)
+# modules/form.py (最終完成・同時書き込み対応版)
 
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-# スプレッドシートに書き込むためのライブラリをインポート
-from gspread_dataframe import set_with_dataframe
+import gspread # エラーハンドリングのためにインポート
 
-# run関数の引数を data_file_path から worksheet に変更
+# run関数の引数は df と worksheet
 def run(df, worksheet):
     st.title("筋トレ記録入力フォーム")
     st.markdown("### 今日のトレーニングを記録しよう！")
@@ -32,9 +31,7 @@ def run(df, worksheet):
                     label_visibility="collapsed"
                 )
             else:
-                # フォームの中ではst.infoがうまく表示されないことがあるため、
-                # ラジオボタンの外にメッセージを出すか、何もしないのが良い
-                pass
+                st.info("まだ登録メンバーがいません。「新規メンバー」を選択してください。")
 
         else: # "新規メンバー" が選択された場合
             name = st.text_input(
@@ -61,33 +58,51 @@ def run(df, worksheet):
 
         submit_button = st.form_submit_button(label='この内容で記録する', type='primary')
 
-    # 送信ボタンが押された後の処理
+    # --- ↓↓↓ 送信ボタンが押された後の処理を、「1行追記」型に全面改訂 ↓↓↓ ---
     if submit_button:
         if not name:
             st.warning("記入者を選択、または新しい名前を入力してください。")
             st.stop()
         
-        # worksheetオブジェクトが正常に渡されているかチェック
         if worksheet is None:
             st.error("スプレッドシートに接続できません。設定を確認してください。")
             st.stop()
 
-        new_record = pd.DataFrame([{
-            'タイムスタンプ': datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
-            'メールアドレス': '', '記入者名': name,
-            '記録日': record_date.strftime('%Y-%m-%d 00:00:00'),
-            'ベンチプレス(kg × 回数)': bench_press, 'デッドリフト(kg × 回数)': deadlift,
-            'スクワット(kg × 回数)': squat, 'ラットプルダウン(kg × 回数)': latpulldown,
-            '懸垂(回数)': chinup, 'マシンショルダープレス(kg × 回数)': shoulder_press,
-            'レッグプレス(kg × 回数)': leg_press, '45°レッグプレス(kg × 回数)': leg_press_45,
-        }])
-        
-        updated_df = pd.concat([df, new_record], ignore_index=True)
+        # 1. スプレッドシートのヘッダー順に合わせて、1行分のデータを「リスト」として作成
+        #    この順番は、スプレッドシートの列の順番と完全に一致させる必要があります。
+        new_row_data = [
+            datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
+            '', # メールアドレス
+            name,
+            record_date.strftime('%Y-%m-%d 00:00:00'),
+            bench_press,
+            deadlift,
+            squat,
+            latpulldown,
+            chinup,
+            shoulder_press,
+            leg_press,
+            leg_press_45,
+            # 今後列を追加した場合は、ここにも同じ順番で追加
+        ]
 
-        # ★★★ CSVへの書き込み処理を、スプレッドシートへの書き込み処理に差し替え ★★★
         try:
-            set_with_dataframe(worksheet, updated_df, include_index=False, resize=True)
+            # 2. スプレッドシートの末尾に、作成したリストを1行追記する
+            worksheet.append_row(new_row_data)
+
+            # 3. 現在のセッションの表示を更新するために、手元のデータフレームにも追加
+            #    スプレッドシートのヘッダーを取得して、列名を合わせる
+            headers = worksheet.get_all_values()[0]
+            new_record_df = pd.DataFrame([new_row_data], columns=headers)
+            # 日付の型を他のデータと合わせておく
+            new_record_df['記録日'] = pd.to_datetime(new_record_df['記録日'])
+            
+            updated_df = pd.concat([df, new_record_df], ignore_index=True)
             st.session_state.df = updated_df
+            
             st.success(f"{name}さんの記録が正常に追加されました！ 🎉")
+            # 画面を再実行して、入力フォームをクリアしつつ表示を最新にする
+            st.rerun()
+
         except gspread.exceptions.APIError as e:
             st.error(f"スプレッドシートへの書き込み中にエラーが発生しました。Google Cloudの権限などを確認してください。エラー: {e}")
