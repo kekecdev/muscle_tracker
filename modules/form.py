@@ -16,6 +16,10 @@ def append_row_with_retry(worksheet, data):
 
 # --- メインのrun関数 ---
 def run(df, worksheet):
+    if 'success_message' in st.session_state:
+        st.success(st.session_state.success_message)
+        # 一度表示したら、メッセージを消去する
+        del st.session_state.success_message    
     st.title("筋トレ記録入力フォーム")
     st.markdown("### 今日のトレーニングを記録しよう！")
     
