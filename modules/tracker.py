@@ -138,6 +138,15 @@ def run(df_original):
         (df['date'] <= pd.to_datetime(end_date))
     )
     dff = df.loc[mask]
+
+
+
+    # ▼▼▼ 最も重要な変更は、この一行です ▼▼▼
+    dff = dff.sort_values(by='date')
+    # ▲▲▲ この一行がグラフを日付順に正しく並べ替えます ▲▲▲
+
+
+    
     # 不正データ（重量・回数ともにゼロ）を除外
     if selected_ex != "chinup":
         dff = dff[~((dff[f"{selected_ex}_kg"] == 0) & (dff[f"{selected_ex}_count"] == 0))]
