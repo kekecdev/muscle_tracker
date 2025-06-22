@@ -54,7 +54,7 @@ sunset = s["sunset"]
 if sunrise <= now <= sunset:
     background = "#ffffff"; text_color = "#000000"; accent = "#2196f3"
 else:
-    background = "#121212"; text_color = "#ffffff"; accent = "#2196f3"
+    background = "#ffffff"; text_color = "#000000"; accent = "#2196f3"
 
 # --- ページ設定 ---
 st.set_page_config(page_title="UEC 筋トレトラッカー", layout="wide", initial_sidebar_state="collapsed")
