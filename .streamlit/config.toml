@@ -1,0 +1,6 @@
+[theme]
+base="light"
+primaryColor="#2196f3"        # アクセントカラー（青）
+backgroundColor="#ffffff"     # 背景色（白）
+secondaryBackgroundColor="#f0f2f6"  # サブ背景（サイドなど）
+textColor="#000000"           # 黒文字
